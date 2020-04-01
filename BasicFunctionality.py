@@ -86,13 +86,11 @@ cv2.waitKey(0)
 
 #Pixel-wise multiplication
 
-"""
-img1 = cv2.imread('flower1.jpg')
+img1 = cv2.imread('./data/flower1.jpg')
 h, w, c = img1.shape
-img2 = cv2.imread('TestImg2.png')
 img5 = np.full((h, w, c), 4, dtype='uint8')
 img3 = img1*img5
-print(img1)
+print(img3)
 print('-------------------------------------')
 print(img3)
 cv2.imshow('img1*img2', img3)
@@ -100,11 +98,11 @@ cv2.waitKey(0)
 cv2.multiply(img1, img5, img3)
 cv2.imshow('img1*img2', img3)
 cv2.waitKey(0)
-"""
+
 
 #Channel combine, Channel extract
 
-
+"""
 img1 = cv2.imread('flower1.jpg')
 b, g, r = cv2.split(img1) # extract b, g, r from img1
 cv2.imshow("img1r", r)
@@ -122,7 +120,7 @@ cv2.imshow("img1r", r)
 print('-------------------------------------')
 print(r)
 cv2.waitKey(0)
-
+"""
 
 #Color convert
 """
