@@ -3,7 +3,92 @@ import numpy as np
 from scipy.spatial import distance as dist
 from matplotlib import pyplot as plt
 import matplotlib.pyplot as plt
+#Box
+"""
+img = cv2.imread('./data/Lenna.png')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+cv2.imshow('img', img)
+cv2.waitKey(0)
+img_blur = cv2.boxFilter(img, -1, (3,3))
+cv2.imshow('boxFilter', img_blur)
+cv2.waitKey(0)
+"""
+#Gaussian
+"""
+img = cv2.imread('./data/Lenna.png')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+img_blur = cv2.GaussianBlur(img, (5,5), 0)
+cv2.imshow('gaussian',img_blur)
+cv2.waitKey(0)
 
+#Median
+
+img = cv2.imread('./data/Lenna.png')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+img_blur = cv2.medianBlur(img, 5)
+cv2.imshow('Median',img_blur)
+cv2.waitKey(0)
+
+#Bilateral
+img = cv2.imread('./data/Lenna.png')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+img_blur = cv2.bilateralFilter(img, 5, 250, 10)
+cv2.imshow('bilateralFilter',img_blur)
+cv2.waitKey(0)
+"""
+#Equalize Histogram
+"""
+img = cv2.imread('./data/girl.jpg')
+cv2.imshow('src', img)
+img= cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+dst = cv2.equalizeHist(img)
+srcHist = cv2.calcHist(images = [img],
+                       channels = [0],
+                       mask = None,
+                       histSize = [256],
+                       ranges = [0, 256])
+
+dstHist = cv2.calcHist(images = [dst],
+                       channels = [0],
+                       mask = None,
+                       histSize = [256],
+                       ranges = [0, 256])
+cv2.imshow('img', img)
+cv2.imshow('dst', dst)
+plt.plot(srcHist, color = 'b', label = 'src hist')
+plt.plot(dstHist, color = 'r', label = 'dst hist')
+plt.legend(loc='best')
+plt.show()
+cv2.waitKey()
+"""
+#Dilate, Erode
+"""
+img = cv2.imread('./data/TestImg9.png')
+img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+kernel = np.ones((5,5), np.uint8)
+erode = cv2.erode(img, kernel)
+dilation = cv2.dilate(img, kernel)
+cv2.imshow('img', img)
+cv2.imshow('erode', erode)
+cv2.imshow('dilation', dilation)
+cv2.waitKey(0)
+"""
+#Opening Closing
+"""
+img1 = cv2.imread('./data/TestImg6.png')
+cv2.imshow('opening',img1)
+img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+img2 = cv2.imread('./data/TestImg6.png')
+img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+kernel = np.ones((5,5), np.uint8)
+opening = cv2.morphologyEx(img1, cv2.MORPH_OPEN, kernel)
+closing = cv2.morphologyEx(img1, cv2.MORPH_CLOSE, kernel)
+
+cv2.imshow('opening',opening)
+cv2.imshow('closing',closing)
+cv2.waitKey(0)
+"""
 #Thresholding
 """
 img_source = cv2.imread('./data/TestImg5.png',0)
@@ -50,8 +135,8 @@ cv2.imshow("THRESH_OTSU", img_result2)
 cv2.imshow("THRESH_OTSU + Gaussian filtering", img_result3)
 
 cv2.waitKey(0)
-"""
 
+"""
 #Image pyramid
 
 """
@@ -66,9 +151,9 @@ cv2.imshow('higher', higher_reso)
 
 cv2.waitKey(0)
 """
-"""
-#blending
 
+#blending
+"""
 A = cv2.imread('./data/apple.jpg')
 B = cv2.imread('./data/orange.jpg')
 
@@ -139,70 +224,54 @@ plt.subplot(2, 2, 4), plt.imshow(real), plt.title('real'), plt.xticks([]), plt.y
 plt.show()
 """
 #Color Detection
-
-# Contour 영역 내에 텍스트 쓰기
 """
-def setLabel(image, str, contour):
-   fontface = cv2.FONT_HERSHEY_SIMPLEX
-   scale = 0.6
-   thickness = 2
-   size = cv2.getTextSize(str, fontface, scale, thickness)
-   text_width = size[0][0]
-   text_height = size[0][1]
-   x, y, width, height = cv2.boundingRect(contour)
-   pt = (x + int((width - text_width) / 2), y + int((height + text_height) / 2))
-   cv2.putText(image, str, pt, fontface, scale, (255, 255, 255), thickness, 8)
-# 컨투어 내부의 색을 평균내서 red, green, blue 중 어느 색인지 체크
-def label(image, contour):
-   mask = np.zeros(image.shape[:2], dtype="uint8")
-   cv2.drawContours(mask, [contour], -1, 255, -1)
-   mask = cv2.erode(mask, None, iterations=2)
-   mean = cv2.mean(image, mask=mask)[:3]
-   minDist = (np.inf, None)
-   for (i, row) in enumerate(lab):
-       d = dist.euclidean(row[0], mean)
-       if d < minDist[0]:
-           minDist = (d, i)
-   return colorNames[minDist[1]]
-# 인식할 색 입력
-colors = [[0, 0, 255], [0, 255, 0], [255, 0, 0]]
-colorNames = ["red", "green", "blue"]
-lab = np.zeros((len(colors), 1, 3), dtype="uint8")
-for i in range(len(colors)):
-   lab[i] = colors[i]
-lab = cv2.cvtColor(lab, cv2.COLOR_BGR2LAB)
-# 원본 이미지 불러오기
-image = cv2.imread("./data/color.jpg", 1)
-blurred = cv2.GaussianBlur(image, (5, 5), 0)
-# 이진화
-gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-ret, thresh = cv2.threshold(gray, 60, 255, cv2.THRESH_BINARY)
-# 색검출할 색공간으로 LAB사용
-img_lab = cv2.cvtColor(blurred, cv2.COLOR_BGR2LAB)
-thresh = cv2.erode(thresh, None, iterations=2)
-cv2.imshow("Thresh", thresh)
-# 컨투어 검출
-contours = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-# 컨투어 리스트가 OpenCV 버전에 따라 차이있기 때문에 추가
-if len(contours) == 2:
-   contours = contours[0]
-elif len(contours) == 3:
-   contours = contours[1]
+cap = cv2.VideoCapture('./data/vtest.avi')
+#동영상 저장하기
 
-# 컨투어 별로 체크
-for contour in contours:
-   cv2.imshow("Image", image)
-   cv2.waitKey(0)
-   # 컨투어를 그림
-   cv2.drawContours(image, [contour], -1, (0, 255, 0), 2)
-   # 컨투어 내부에 검출된 색을 표시
-   color_text = label(img_lab, contour)
-   setLabel(image, color_text, contour)
 
-cv2.imshow("Image", image)
-cv2.waitKey(0)
+height, width = (int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)), int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)))
+fourcc = cv2.VideoWriter_fourcc(*'WMV2')
+out = cv2.VideoWriter('output.avi', fourcc, 30.0, (width, height))
+while True:
+    _, frame = cap.read()
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+# Red color
+    low_red = np.array([161, 155, 84])
+    high_red = np.array([179, 255, 255])
+    red_mask = cv2.inRange(hsv_frame, low_red, high_red)
+    red = cv2.bitwise_and(frame, frame, mask=red_mask)
+    # Blue color
+    low_blue = np.array([94, 80, 2])
+    high_blue = np.array([126, 255, 255])
+    blue_mask = cv2.inRange(hsv_frame, low_blue, high_blue)
+    blue = cv2.bitwise_and(frame, frame, mask=blue_mask)
+
+    # Green color
+    low_green = np.array([25, 52, 72])
+    high_green = np.array([102, 255, 255])
+    green_mask = cv2.inRange(hsv_frame, low_green, high_green)
+    green = cv2.bitwise_and(frame, frame, mask=green_mask)
+
+    # Every color except white
+    low = np.array([0, 42, 0])
+    high = np.array([179, 255, 255])
+    mask = cv2.inRange(hsv_frame, low, high)
+    result = cv2.bitwise_and(frame, frame, mask=mask)
+    cv2.imshow("Frame", frame)
+    cv2.imshow("Red", red)
+    cv2.imshow("Blue", blue)
+    cv2.imshow("Green", green)
+    cv2.imshow("Result", result)
+    out.write(red)
+    key = cv2.waitKey(1)
+    if key == 27:
+        break
+cap.release()
+out.release()
+cv2.destroyAllWindows()
 """
 #Integral image
+
 """
 snap = np.array([[1,2,3],[4,5,6],[7,8,9]], dtype='uint8')
 print(snap)
@@ -215,14 +284,13 @@ intergral_image = intergral_image[1:,1:]
 print(intergral_image)
 """
 #Gradient Magnitude
-
 """
 img = cv2.imread('./data/keyboard.jpg', cv2.IMREAD_GRAYSCALE)
 
 laplacian = cv2.Laplacian(img, -1)
 sobelx = cv2.Sobel(img, -1, 1, 0, ksize=3)
 sobely = cv2.Sobel(img, -1, 0, 1, ksize=3)
-scharrx= cv2.Scharr(img, -1, 1, 0)
+scharrx = cv2.Scharr(img, -1, 1, 0)
 scharry = cv2.Scharr(img, -1, 0, 1)
 cv2.imshow('laplacian',laplacian)
 cv2.waitKey(0)
@@ -282,6 +350,5 @@ plt.bar(np.arange(len(mean)), mean, tick_label = color)
 plt.ylim( 0, 200)
 plt.show()
 """
-cv2.destroyAllWindows()
 
 

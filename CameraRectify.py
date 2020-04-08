@@ -113,32 +113,15 @@ camera_model = dict([('M1', M1), ('M2', M2), ('dist1', d1),
 
 
 R1, R2, P1, P2, Q, roi1, roi2 = cv2.stereoRectify(M1, d1, M2, d2, dims, R, T)
-print('R1',R1)
-print('R2',R2)
-print('P1',P1)
-print('P2',P2)
-print('Q',Q)
 
 img = cv2.imread('./LEFT/left12.jpg')
 img2 = cv2.imread('./RIGHT/right12.jpg')
-
-h, w = img.shape[:2]
-newcameramtx, roi = cv2.getOptimalNewCameraMatrix(M1, d1, (w, h), 1, (w, h))
 
 mapx1, mapy1 = cv2.initUndistortRectifyMap(M1, d1, R1, P1, dims, cv2.CV_32F)
 mapx2, mapy2 = cv2.initUndistortRectifyMap(M2, d2, R2, P2, dims, cv2.CV_32F)
 
 dst = cv2.remap(img, mapx1, mapy1, cv2.INTER_LINEAR)
 dst2 = cv2.remap(img2, mapx2, mapy2, cv2.INTER_LINEAR)
-"""
-x,y,w,h = roi
-dst = dst[y:y+h, x:x+w]
-dst2 = dst2[y:y+h, x:x+w]
-"""
-x, y, w, h = roi
-dst = dst[y:y + h, x:x + w]
-x, y, w, h = roi
-dst2 = dst2[y:y + h, x:x + w]
+
 cv2.imwrite('Rectifyl.png', dst)
 cv2.imwrite('Rectifyr.png', dst2)
-

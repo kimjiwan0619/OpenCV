@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import time
 
 """
 height, width,channel = img1.shape
@@ -85,7 +86,7 @@ cv2.waitKey(0)
 """
 
 #Pixel-wise multiplication
-
+"""
 img1 = cv2.imread('./data/flower1.jpg')
 h, w, c = img1.shape
 img5 = np.full((h, w, c), 4, dtype='uint8')
@@ -98,7 +99,7 @@ cv2.waitKey(0)
 cv2.multiply(img1, img5, img3)
 cv2.imshow('img1*img2', img3)
 cv2.waitKey(0)
-
+"""
 
 #Channel combine, Channel extract
 
@@ -143,15 +144,20 @@ print(img8)
 """
 #Table lookup
 
-"""
-img1 = cv2.imread('flower1.jpg')
-cv2.imshow('brighter', img1)
-cv2.waitKey(0)
+
+img1 = cv2.imread('./data/flower1.jpg')
 brightness_factor = 2
+start = time.time()
 table = np.array([ i*brightness_factor for i in range (0,256)]).clip(0,255).astype('uint8')
 img2 = cv2.LUT(img1, table)
+print(time.time() - start)
 cv2.imshow('brighter', img2)
 cv2.waitKey(0)
-"""
+
+h,w,c = img1.shape
+start = time.time()
+img3 = np.full((h, w, c), 2, dtype='uint8')
+img4 = cv2.multiply(img1, img3)
+print(time.time() - start)
 
 cv2.destroyAllWindows()

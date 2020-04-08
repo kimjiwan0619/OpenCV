@@ -38,8 +38,8 @@ while True:
 #Fast corner
 
 """
-img = cv2.imread('./data/building.jpg', cv2.IMREAD_GRAYSCALE)
-fast = cv2.FastFeatureDetector_create(100)
+img = cv2.imread('./data/dices.jpg', cv2.IMREAD_GRAYSCALE)
+fast = cv2.FastFeatureDetector_create(70)
 
 kp = fast.detect(img, None)
 img2 = cv2.drawKeypoints(img, kp, (255, 0, 0))
@@ -55,136 +55,110 @@ cv2.waitKey(0)
 
 #SVM
 
-#!/usr/bin/env python
-
-SZ = 20
-CLASS_N = 10
-
-def split2d(img, cell_size, flatten=True):
-    h, w = img.shape[:2]
-    sx, sy = cell_size
-    cells = [np.hsplit(row, w//sx) for row in np.vsplit(img, h//sy)]
-    cells = np.array(cells)
-    if flatten:
-        cells = cells.reshape(-1, sy, sx)
-    return cells
-
-def load_digits(fn):
-    digits_img = cv2.imread(fn, 0)
-    digits = split2d(digits_img, (SZ, SZ))
-    labels = np.repeat(np.arange(CLASS_N), len(digits)/CLASS_N)
-    return digits, labels
-
+SZ=20
+bin_n = 16 # Number of bins
+affine_flags = cv2.WARP_INVERSE_MAP|cv2.INTER_LINEAR
 def deskew(img):
     m = cv2.moments(img)
     if abs(m['mu02']) < 1e-2:
         return img.copy()
     skew = m['mu11']/m['mu02']
     M = np.float32([[1, skew, -0.5*SZ*skew], [0, 1, 0]])
-    img = cv2.warpAffine(img, M, (SZ, SZ), flags=cv2.WARP_INVERSE_MAP | cv2.INTER_LINEAR)
+    img = cv2.warpAffine(img,M,(SZ, SZ),flags=affine_flags)
     return img
+def hog(img):
+    gx = cv2.Sobel(img, cv2.CV_32F, 1, 0)
+    gy = cv2.Sobel(img, cv2.CV_32F, 0, 1)
+    mag, ang = cv2.cartToPolar(gx, gy)
+    bins = np.int32(bin_n*ang/(2*np.pi))    # quantizing binvalues in (0...16)
+    bin_cells = bins[:10,:10], bins[10:,:10], bins[:10,10:], bins[10:,10:]
+    mag_cells = mag[:10,:10], mag[10:,:10], mag[:10,10:], mag[10:,10:]
+    hists = [np.bincount(b.ravel(), m.ravel(), bin_n) for b, m in zip(bin_cells, mag_cells)]
+    hist = np.hstack(hists)     # hist is a 64 bit vector
+    return hist
 
-class StatModel(object):
-    def load(self, fn):
-        self.model.load(fn)  # Known bug: https://github.com/opencv/opencv/issues/4969
-    def save(self, fn):
-        self.model.save(fn)
+img = cv2.imread('./data/digits.png', 0)
+if img is None:
+    raise Exception("we need the digits.png image from samples/data here !")
+cells = [np.hsplit(row,100) for row in np.vsplit(img,50)]
+# First half is trainData, remaining is testData
+train_cells = [ i[:50] for i in cells ]
+test_cells = [ i[50:] for i in cells]
+deskewed = [list(map(deskew,row)) for row in train_cells]
+hogdata = [list(map(hog,row)) for row in deskewed]
+trainData = np.float32(hogdata).reshape(-1,64)
+responses = np.repeat(np.arange(10),250)[:,np.newaxis]
+svm = cv2.ml.SVM_create()
+svm.setKernel(cv2.ml.SVM_LINEAR)
+svm.setType(cv2.ml.SVM_C_SVC)
+svm.setC(2.67)
+svm.setGamma(5.383)
+svm.train(trainData, cv2.ml.ROW_SAMPLE, responses)
+svm.save('svm_data.dat')
 
-class SVM(StatModel):
-    def __init__(self, C = 12.5, gamma = 0.50625):
-        self.model = cv2.ml.SVM_create()
-        self.model.setGamma(gamma)
-        self.model.setC(C)
-        self.model.setKernel(cv2.ml.SVM_RBF)
-        self.model.setType(cv2.ml.SVM_C_SVC)
-
-    def train(self, samples, responses):
-        self.model.train(samples, cv2.ml.ROW_SAMPLE, responses)
-
-    def predict(self, samples):
-
-        return self.model.predict(samples)[1].ravel()
-def evaluate_model(model, digits, samples, labels):
-    resp = model.predict(samples)
-    err = (labels != resp).mean()
-    print('Accuracy: %.2f %%' % ((1 - err)*100))
-
-    confusion = np.zeros((10, 10), np.int32)
-    for i, j in zip(labels, resp):
-        confusion[int(i), int(j)] += 1
-    print('confusion matrix:')
-    print(confusion)
-
-    vis = []
-    for img, flag in zip(digits, resp == labels):
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        if not flag:
-            img[...,:2] = 0
-
-        vis.append(img)
-    return mosaic(25, vis)
-def preprocess_simple(digits):
-    return np.float32(digits).reshape(-1, SZ*SZ) / 255.0
+deskewed = [list(map(deskew,row)) for row in test_cells]
+hogdata = [list(map(hog,row)) for row in deskewed]
+testData = np.float32(hogdata).reshape(-1,bin_n*4)
+result = svm.predict(testData)[1]
+mask = result==responses
 
 
-def get_hog() :
-    winSize = (20,20)
-    blockSize = (10,10)
-    blockStride = (5,5)
-    cellSize = (10,10)
-    nbins = 9
-    derivAperture = 1
-    winSigma = -1.
-    histogramNormType = 0
-    L2HysThreshold = 0.2
-    gammaCorrection = 1
-    nlevels = 64
-    signedGradient = True
+correct = np.count_nonzero(mask)
+print(correct*100.0/result.size)
 
-    hog = cv2.HOGDescriptor(winSize,blockSize,blockStride,cellSize,nbins,derivAperture,winSigma,histogramNormType,L2HysThreshold,gammaCorrection,nlevels, signedGradient)
+#Harris corner
+"""
+img = cv2.imread('./data/house.jpg')
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    return hog
-    affine_flags = cv2.WARP_INVERSE_MAP|cv2.INTER_LINEAR
+gray = np.float32(gray)
+dst = cv2.cornerHarris(gray, 2, 3, 0.04)
+dst = cv2.dilate(dst, None)
+ret, dst = cv2.threshold(dst, 0.05 * dst.max(), 255, 0)
+dst = np.uint8(dst)
 
-print('Loading digits from digits.png ... ')
-# Load data.
-digits, labels = load_digits('./data/digits.png')
+# find centroids
+ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
 
-print('Shuffle data ... ')
-# Shuffle data
-rand = np.random.RandomState(10)
-shuffle = rand.permutation(len(digits))
-digits, labels = digits[shuffle], labels[shuffle]
+# define the criteria to stop and refine the corners
+criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+corners = cv2.cornerSubPix(gray, np.float32(centroids), (5, 5), (-1, -1), criteria)
 
-print('Deskew images ... ')
-digits_deskewed = list(map(deskew, digits))
+# Now draw them
+res = np.hstack((centroids, corners))
+res = np.int0(res)
 
-print('Defining HoG parameters ...')
-# HoG feature descriptor
-hog = get_hog();
+img[res[:, 1], res[:, 0]] = [0, 0, 255]
+img[res[:, 3], res[:, 2]] = [0, 255, 0]
 
-print('Calculating HoG descriptor for every image ... ')
-hog_descriptors = []
-for img in digits_deskewed:
-    hog_descriptors.append(hog.compute(img))
-hog_descriptors = np.squeeze(hog_descriptors)
-
-print('Spliting data into training (90%) and test set (10%)... ')
-train_n=int(0.9*len(hog_descriptors))
-digits_train, digits_test = np.split(digits_deskewed, [train_n])
-hog_descriptors_train, hog_descriptors_test = np.split(hog_descriptors, [train_n])
-labels_train, labels_test = np.split(labels, [train_n])
-
-
-print('Training SVM model ...')
-model = SVM()
-model.train(hog_descriptors_train, labels_train)
-
-print('Saving SVM model ...')
-model.save('digits_svm.dat')
-
-print('Evaluating model ... ')
-vis = evaluate_model(model, digits_test, hog_descriptors_test, labels_test)
-cv2.imwrite("./data/digits-classification.jpg",vis)
-cv2.imshow("Vis", vis)
+cv2.imshow('dst', img)
 cv2.waitKey(0)
+cv2.destroyAllWindows()
+"""
+#Houghlines
+"""
+img = cv2.imread('Rectifyl.png')
+img_original = img.copy()
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+cv2.imshow('edges',edges)
+cv2.waitKey(0)
+lines = cv2.HoughLines(edges, 1, np.pi/180, 150)
+
+for i in range(len(lines)):
+    for rho, theta in lines[i]:
+        a = np.cos(theta)
+        b = np.sin(theta)
+        x0 = a*rho
+        y0 = b*rho
+        x1 = int(x0 + 1000*(-b))
+        y1 = int(y0 + 1000*(a))
+        x2 = int(x0 - 1000*(-b))
+        y2 = int(y0 - 1000*(a))
+        cv2.line(img,(x1,y1),(x2,y2),(0,0,255),2)
+
+
+res = np.vstack((img_original,img))
+cv2.imshow('img',res)
+cv2.waitKey(0)
+"""
